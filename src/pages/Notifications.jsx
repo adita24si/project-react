@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiMail, FiBell, FiTrash2, FiCheckSquare, FiExternalLink, FiClock } from "react-icons/fi";
+import { CRMContext } from "../context/CRMContext";
 
-import NotificationItem from "../components/ui/NotificationItem";
 import TabsComponent from "../components/ui/TabsComponent";
 import Pagination from "../components/ui/Pagination";
 import EmptyState from "../components/ui/EmptyState";
@@ -13,75 +13,44 @@ const ITEMS_PER_PAGE = 4;
 
 export default function Notifications() {
   const navigate = useNavigate();
+  const { 
+    notifications, 
+    markNotificationAsRead, 
+    markAllNotificationsAsRead, 
+    clearNotifications 
+  } = useContext(CRMContext);
+  
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Generate 20 dummy notifications
-  const initialNotifications = useMemo(() => {
-    const types = ["promo", "membership", "complaint", "activity"];
-    const titles = {
-      promo: "Kode Voucher Diskon Baru Dirilis",
-      membership: "Loyalty Tier Upgrade Terverifikasi",
-      complaint: "Pengaduan Komplain Masuk",
-      activity: "Registrasi Customer Baru"
-    };
-    const descriptions = {
-      promo: "Kode kupon 'LEBARANSYAWAL10' diskon 10% s/d Rp 1.500.000 resmi aktif. Kupon ini berlaku hingga 15 Juni 2026.",
-      membership: "Akumulasi belanja Siti Rahmawati mencapai target. Level di-upgrade ke Gold Tier otomatis.",
-      complaint: "Customer Budi Santoso melaporkan kaki meja makan lecet setelah pengiriman pagi ini.",
-      activity: "Pelanggan baru Clarissa Wulandari telah mendaftarkan alamat email & kontak showroom utama."
-    };
-    const links = {
-      promo: "/promotions/301",
-      membership: "/memberships/2",
-      complaint: "/customer-service/403",
-      activity: "/customers/6"
-    };
-
-    return Array.from({ length: 20 }, (_, i) => {
-      const type = types[i % types.length];
-      return {
-        id: `NTF-${700 + i * 13}`,
-        title: `${titles[type]} #${i + 1}`,
-        description: descriptions[type],
-        time: `${i + 1} jam yang lalu`,
-        type: type,
-        isRead: i > 2,
-        link: links[type]
-      };
-    });
-  }, []);
-
-  const [notifications, setNotifications] = useState(initialNotifications);
 
   // Filter
   const filteredNotifications = useMemo(() => {
     if (activeTab === "all") return notifications;
-    return notifications.filter(n => n.type === activeTab);
+    
+    // Maps tab key to notification type
+    const tabMap = {
+      order: "Order Baru",
+      customer: "Customer Baru",
+      membership: "Membership Upgrade",
+      ticket: "Ticket Baru",
+      promo: "Promo Berakhir"
+    };
+    
+    return notifications.filter(n => n.type === tabMap[activeTab]);
   }, [notifications, activeTab]);
 
   // Selected Notification for Preview
-  const [selectedId, setSelectedId] = useState(
-    filteredNotifications[0] ? filteredNotifications[0].id : null
-  );
+  const [selectedId, setSelectedId] = useState(null);
 
   const selectedNotif = useMemo(() => {
-    return notifications.find(n => n.id === selectedId) || filteredNotifications[0] || null;
+    if (selectedId) {
+      return notifications.find(n => n.id === selectedId) || null;
+    }
+    return filteredNotifications[0] || null;
   }, [notifications, selectedId, filteredNotifications]);
 
-  const handleMarkAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus semua notifikasi?")) {
-      setNotifications([]);
-      setSelectedId(null);
-    }
-  };
-
   const handleItemClick = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    markNotificationAsRead(id);
     setSelectedId(id);
   };
 
@@ -94,14 +63,30 @@ export default function Notifications() {
 
   const tabs = [
     { key: "all", label: "Semua" },
-    { key: "promo", label: "Promo" },
+    { key: "order", label: "Order" },
+    { key: "customer", label: "Customer" },
     { key: "membership", label: "Upgrade" },
-    { key: "complaint", label: "Komplain" },
-    { key: "activity", label: "Aktivitas" },
+    { key: "ticket", label: "Tiket CS" },
   ];
 
+  // Map notification type to route links
+  const getRouteLink = (type) => {
+    switch (type) {
+      case "Order Baru":
+        return "/purchase-history";
+      case "Customer Baru":
+        return "/customers";
+      case "Membership Upgrade":
+        return "/memberships";
+      case "Ticket Baru":
+        return "/customer-service";
+      default:
+        return "/";
+    }
+  };
+
   return (
-    <div className="p-5 md:p-6 max-w-6xl mx-auto font-sans bg-white border border-[#E8E2DD]/80 rounded-xl">
+    <div className="max-w-6xl mx-auto font-sans text-left">
       
       {/* Header Area */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-3 border-b border-[#E8E2DD]/60">
@@ -116,14 +101,14 @@ export default function Notifications() {
 
         <div className="flex gap-2">
           <button 
-            onClick={handleMarkAllRead}
-            className="flex items-center gap-1 px-2.5 py-1.5 border border-[#E8E2DD] hover:bg-[#FAFAFA] rounded-md text-xs font-semibold text-[#8A817A] hover:text-[#2B2420] transition-colors"
+            onClick={markAllNotificationsAsRead}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E8E2DD] hover:bg-[#FAFAF8] rounded-lg text-xs font-semibold text-[#8A817A] hover:text-[#2B2420] transition-colors bg-white cursor-pointer"
           >
             <FiCheckSquare className="text-sm" /> Read All
           </button>
           <button 
-            onClick={handleClearAll}
-            className="flex items-center gap-1 px-2.5 py-1.5 border border-[#F2E6E6] hover:bg-[#F2E6E6]/40 rounded-md text-xs font-semibold text-[#B85C5C] transition-colors"
+            onClick={clearNotifications}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-[#F2E6E6] hover:bg-[#F2E6E6]/40 rounded-lg text-xs font-semibold text-[#B85C5C] transition-colors bg-white cursor-pointer"
           >
             <FiTrash2 className="text-sm" /> Clear
           </button>
@@ -131,10 +116,10 @@ export default function Notifications() {
       </div>
 
       {/* Modern Split-Pane Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Category Tabs & List (with Fixed Height & Scroll) */}
-        <div className="lg:col-span-5 flex flex-col justify-between border border-[#E8E2DD] rounded-xl p-4 bg-[#FAFAFA]/30">
+        {/* Left Column: Category Tabs & List */}
+        <div className="lg:col-span-5 flex flex-col justify-between border border-[#E8E2DD] rounded-2xl p-4 bg-white shadow-xs">
           <div>
             {/* Tabs */}
             <div className="border-b border-[#E8E2DD] mb-3">
@@ -145,31 +130,31 @@ export default function Notifications() {
               />
             </div>
 
-            {/* Scrollable List Container (Fixed Height to prevent vertical stretching) */}
-            <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
+            {/* Scrollable List Container */}
+            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
               {paginatedNotifications.length > 0 ? (
                 paginatedNotifications.map((notif) => (
                   <div
                     key={notif.id}
                     onClick={() => handleItemClick(notif.id)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                      selectedId === notif.id
+                    className={`p-3 border rounded-xl cursor-pointer transition-all ${
+                      selectedNotif && selectedNotif.id === notif.id
                         ? "border-[#79553D] bg-[#FAF6F3]"
                         : notif.isRead
-                        ? "border-[#E8E2DD]/60 bg-white hover:bg-[#FAFAFA]"
+                        ? "border-[#E8E2DD]/60 bg-white hover:bg-[#FAFAF8]"
                         : "border-[#79553D]/25 bg-[#FAF6F3]/30 hover:bg-[#FAF6F3]/50"
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
-                      <p className={`text-xs ${notif.isRead ? "font-semibold" : "font-bold"} text-[#2B2420] truncate`}>
+                      <p className={`text-xs ${notif.isRead ? "font-semibold" : "font-extrabold"} text-[#2B2420] truncate`}>
                         {notif.title}
                       </p>
                       {!notif.isRead && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#79553D] mt-1 flex-shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#79553D] mt-1 flex-shrink-0 animate-ping" />
                       )}
                     </div>
-                    <p className="text-[11px] text-[#8A817A] mt-1 truncate">{notif.description}</p>
-                    <span className="text-[9px] text-[#8A817A] font-semibold block mt-2">{notif.time}</span>
+                    <p className="text-[11px] text-[#8A817A] mt-1 line-clamp-2 leading-relaxed">{notif.description}</p>
+                    <span className="text-[9px] text-[#8A817A] font-bold block mt-2">{notif.time}</span>
                   </div>
                 ))
               ) : (
@@ -182,7 +167,7 @@ export default function Notifications() {
             </div>
           </div>
 
-          {/* Pagination at the bottom of the list card */}
+          {/* Pagination */}
           <div className="mt-3 pt-2 border-t border-[#E8E2DD]/40">
             <Pagination 
               currentPage={currentPage} 
@@ -194,39 +179,37 @@ export default function Notifications() {
           </div>
         </div>
 
-        {/* Right Column: Dynamic Notification Detail Preview Panel */}
-        <div className="lg:col-span-7">
+        {/* Right Column: Dynamic Preview Panel */}
+        <div className="lg:col-span-7 bg-white border border-[#E8E2DD] rounded-2xl p-6">
           {selectedNotif ? (
-            <DetailCard title="Pratinjau Detail Notifikasi">
-              <div className="space-y-4">
-                <div className="bg-[#FAF6F3] border border-[#E8E2DD] p-4.5 rounded-lg">
-                  <h4 
-                    className="text-sm font-bold text-[#2B2420] mb-2"
-                    style={{ fontFamily: "ui-serif, Georgia, Cambria, serif" }}
-                  >
-                    {selectedNotif.title}
-                  </h4>
-                  <p className="text-xs text-[#8A817A] leading-relaxed">
-                    {selectedNotif.description}
-                  </p>
-                </div>
-                
-                <div className="space-y-0.5">
-                  <InfoRow label="ID Notifikasi" value={selectedNotif.id} />
-                  <InfoRow label="Kategori" value={<span className="font-semibold text-xs text-[#79553D]">{selectedNotif.type.toUpperCase()}</span>} />
-                  <InfoRow label="Waktu Masuk" value={selectedNotif.time} />
-                </div>
-
-                <button
-                  onClick={() => navigate(selectedNotif.link)}
-                  className="w-full flex items-center justify-center gap-1.5 bg-[#79553D] hover:bg-[#634430] text-white py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            <div className="space-y-4">
+              <div className="bg-[#FAF6F3] border border-[#E8E2DD] p-4.5 rounded-xl text-left">
+                <h4 
+                  className="text-sm font-bold text-[#2B2420] mb-2"
+                  style={{ fontFamily: "ui-serif, Georgia, Cambria, serif" }}
                 >
-                  <FiExternalLink /> Buka Modul Terkait
-                </button>
+                  {selectedNotif.title}
+                </h4>
+                <p className="text-xs text-[#8A817A] leading-relaxed">
+                  {selectedNotif.description}
+                </p>
               </div>
-            </DetailCard>
+              
+              <div className="space-y-0.5 text-left">
+                <InfoRow label="ID Notifikasi" value={`#NTF-${selectedNotif.id}`} />
+                <InfoRow label="Kategori" value={<span className="font-bold text-xs text-[#79553D]">{selectedNotif.type.toUpperCase()}</span>} />
+                <InfoRow label="Waktu Masuk" value={selectedNotif.time} />
+              </div>
+
+              <button
+                onClick={() => navigate(getRouteLink(selectedNotif.type))}
+                className="w-full flex items-center justify-center gap-1.5 bg-[#79553D] hover:bg-[#634430] text-white py-2.5 rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer border-none"
+              >
+                <FiExternalLink /> Buka Modul Terkait
+              </button>
+            </div>
           ) : (
-            <div className="h-full flex items-center justify-center border border-[#E8E2DD] border-dashed rounded-xl p-8 text-center text-[#8A817A]">
+            <div className="h-full flex items-center justify-center border border-[#E8E2DD] border-dashed rounded-xl p-8 text-center text-[#8A817A] min-h-[300px]">
               <div>
                 <FiMail className="text-3xl mx-auto opacity-30 mb-2" />
                 <p className="text-xs font-semibold">Pilih notifikasi untuk melihat detail</p>

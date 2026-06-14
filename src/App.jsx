@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Loading from "./components/Loading";
+import { CRMProvider } from "./context/CRMContext";
 
 /* Lazy Pages & Layouts */
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -21,6 +22,8 @@ const PromotionDetail = lazy(() => import("./pages/PromotionDetail"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const NotificationDetail = lazy(() => import("./pages/NotificationDetail"));
 const ErrorPage = lazy(() => import("./pages/ErrorPage"));
+const CustomProjects = lazy(() => import("./pages/CustomProjects"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
@@ -41,65 +44,73 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <Suspense fallback={<Loading />}>
-      <Routes>
+    <CRMProvider>
+      <Suspense fallback={<Loading />}>
+        <Routes>
 
-        {/* 🔑 Auth Layout Group */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot" element={<Forgot />} />
-        </Route>
+          {/* Public Landing Page */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* 🍵 Main Layout Group (Protected) */}
-        <Route 
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/" element={<Dashboard />} />
+          {/* 🔑 Auth Layout Group */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot" element={<Forgot />} />
+          </Route>
 
-          {/* Customers */}
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
+          {/* 🍵 Main Layout Group (Protected) */}
+          <Route 
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Purchase History */}
-          <Route path="/purchase-history" element={<PurchaseHistory />} />
-          <Route path="/purchase-history/:id" element={<PurchaseDetail />} />
+            {/* Customers */}
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/customers/:id" element={<CustomerDetail />} />
 
-          {/* Memberships */}
-          <Route path="/memberships" element={<Memberships />} />
-          <Route path="/memberships/:id" element={<MembershipDetail />} />
+            {/* Purchase History */}
+            <Route path="/purchase-history" element={<PurchaseHistory />} />
+            <Route path="/purchase-history/:id" element={<PurchaseDetail />} />
 
-          {/* Customer Service */}
-          <Route path="/customer-service" element={<CustomerService />} />
-          <Route path="/customer-service/:id" element={<ServiceDetail />} />
+            {/* Memberships */}
+            <Route path="/memberships" element={<Memberships />} />
+            <Route path="/memberships/:id" element={<MembershipDetail />} />
 
-          {/* Product Consultation */}
-          <Route path="/product-consultation" element={<ProductConsultation />} />
-          <Route path="/product-consultation/:id" element={<ConsultationDetail />} />
+            {/* Customer Service */}
+            <Route path="/customer-service" element={<CustomerService />} />
+            <Route path="/customer-service/:id" element={<ServiceDetail />} />
 
-          {/* Promotions */}
-          <Route path="/promotions" element={<Promotions />} />
-          <Route path="/promotions/:id" element={<PromotionDetail />} />
+            {/* Product Consultation */}
+            <Route path="/product-consultation" element={<ProductConsultation />} />
+            <Route path="/product-consultation/:id" element={<ConsultationDetail />} />
 
-          {/* Notifications */}
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/notifications/:id" element={<NotificationDetail />} />
+            {/* Custom Projects */}
+            <Route path="/custom-projects" element={<CustomProjects />} />
 
-          {/* Error Pages inside Main Layout */}
-          <Route path="/400" element={<ErrorPage code="400" />} />
-          <Route path="/401" element={<ErrorPage code="401" />} />
-          <Route path="/403" element={<ErrorPage code="403" />} />
-          
-          {/* Catch-all 404 inside Main Layout */}
-          <Route path="*" element={<ErrorPage code="404" />} />
-        </Route>
+            {/* Promotions */}
+            <Route path="/promotions" element={<Promotions />} />
+            <Route path="/promotions/:id" element={<PromotionDetail />} />
 
-      </Routes>
-    </Suspense>
+            {/* Notifications */}
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/notifications/:id" element={<NotificationDetail />} />
+
+            {/* Error Pages inside Main Layout */}
+            <Route path="/400" element={<ErrorPage code="400" />} />
+            <Route path="/401" element={<ErrorPage code="401" />} />
+            <Route path="/403" element={<ErrorPage code="403" />} />
+            
+            {/* Catch-all 404 inside Main Layout */}
+            <Route path="*" element={<ErrorPage code="404" />} />
+          </Route>
+
+        </Routes>
+      </Suspense>
+    </CRMProvider>
   );
 }
 

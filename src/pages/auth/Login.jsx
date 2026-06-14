@@ -49,7 +49,7 @@ export default function Login() {
       );
 
       localStorage.setItem("user", JSON.stringify(response.data));
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       setError(
         err.response?.data?.message || "Username atau password salah"

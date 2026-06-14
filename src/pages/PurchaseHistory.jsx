@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye } from "react-icons/fi";
+import { CRMContext } from "../context/CRMContext";
 
 import DataTable from "../components/ui/DataTable";
 import SearchInput from "../components/ui/SearchInput";
@@ -11,49 +12,23 @@ import StatusBadge from "../components/ui/StatusBadge";
 const ITEMS_PER_PAGE = 7;
 
 export default function PurchaseHistory() {
+  const { transactions } = useContext(CRMContext);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Generate 30 dummy purchase records
-  const data = useMemo(() => {
-    const products = [
-      "Oslo Walnut Sofa 3-Seat", "Noir Dining Table", "Linen Lounge Chair", 
-      "Arco Brass Floor Lamp", "Danish Teak Credenza", "Queen Bed Frame", 
-      "Minimalist Oak Sideboard", "Ergonomic Desk Chair", "Velvet Accent Pouf"
-    ];
-    const customers = [
-      "Budi Santoso", "Siti Rahmawati", "Ahmad Reza", "Dewi Lestari", "Andi Wijaya",
-      "Clarissa Wulandari", "Hendra Gunawan", "Fitriani Siregar", "Rian Hidayat", "Indah Permatasari"
-    ];
-    const statusOpts = ["Lunas", "Cicilan", "Pending"];
-
-    return Array.from({ length: 30 }, (_, i) => {
-      const price = ((i % 5) + 1) * 2200000;
-      const qty = (i % 3) + 1;
-      return {
-        id: `TX-${9000 - i * 13}`,
-        customer: customers[i % customers.length],
-        product: products[i % products.length],
-        qty: qty,
-        total: price * qty,
-        status: statusOpts[i % statusOpts.length],
-        date: `2026-05-${String((i % 25) + 1).padStart(2, "0")}`,
-        paymentMethod: ["Transfer Bank", "Kartu Kredit", "E-Wallet"][i % 3]
-      };
-    });
-  }, []);
-
   // Filter & Search
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      const matchSearch = item.customer.toLowerCase().includes(search.toLowerCase()) || 
-                          item.product.toLowerCase().includes(search.toLowerCase());
+    return transactions.filter((item) => {
+      const productNames = item.products.map(p => p.name).join(", ");
+      const matchSearch = item.customerName.toLowerCase().includes(search.toLowerCase()) || 
+                          productNames.toLowerCase().includes(search.toLowerCase()) ||
+                          item.id.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === "All" || item.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [data, search, statusFilter]);
+  }, [transactions, search, statusFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
@@ -63,21 +38,29 @@ export default function PurchaseHistory() {
   }, [filteredData, currentPage]);
 
   const columns = [
-    { key: "id", label: "ID Transaksi" },
+    { key: "id", label: "Nomor Order" },
     { 
-      key: "customer", 
-      label: "Customer", 
-      render: (r) => <span className="font-semibold text-[#2B2420]">{r.customer}</span> 
+      key: "customerName", 
+      label: "CustomerName", 
+      render: (r) => <span className="font-bold text-[#2B2420]">{r.customerName}</span> 
     },
-    { key: "product", label: "Produk Furniture" },
-    { key: "qty", label: "Qty", render: (r) => `${r.qty} Pcs` },
     { 
-      key: "total", 
-      label: "Total Nilai", 
-      render: (r) => <span className="font-bold text-xs text-[#79553D]">{r.total.toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 })}</span> 
+      key: "products", 
+      label: "Produk Furniture",
+      render: (r) => <span>{r.products.map(p => `${p.name} (x${p.qty})`).join(", ")}</span>
     },
-    { key: "status", label: "Status Pembayaran", render: (r) => <StatusBadge status={r.status} /> },
-    { key: "date", label: "Tanggal" },
+    { 
+      key: "totalAmount", 
+      label: "Total Pembayaran", 
+      render: (r) => (
+        <span className="font-extrabold text-xs text-[#79553D]">
+          {(r.totalAmount || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 })}
+        </span>
+      ) 
+    },
+    { key: "paymentMethod", label: "Metode" },
+    { key: "status", label: "Status Pesanan", render: (r) => <StatusBadge status={r.status} /> },
+    { key: "date", label: "Tanggal Pembelian" },
     {
       key: "actions",
       label: "Actions",
@@ -88,7 +71,7 @@ export default function PurchaseHistory() {
             e.stopPropagation();
             navigate(`/purchase-history/${r.id}`);
           }}
-          className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all"
+          className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all cursor-pointer border-none bg-transparent"
         >
           <FiEye className="text-sm" />
         </button>
@@ -97,7 +80,7 @@ export default function PurchaseHistory() {
   ];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto font-sans bg-white border border-[#E8E2DD]/80 rounded-xl">
+    <div className="max-w-7xl mx-auto font-sans text-left">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -108,8 +91,8 @@ export default function PurchaseHistory() {
           >
             Purchase History
           </h1>
-          <p className="text-sm text-[#8A817A] mt-2 font-medium">
-            Riwayat pembelian mebel seluruh customer, monitor status pembayaran dan metode transaksi.
+          <p className="text-sm text-[#8A817A] mt-2 font-semibold">
+            Riwayat pembelian mebel seluruh customer, monitor status pengiriman dan metode pembayaran.
           </p>
         </div>
       </div>
@@ -122,11 +105,11 @@ export default function PurchaseHistory() {
             setSearch(e.target.value);
             setCurrentPage(1);
           }} 
-          placeholder="Cari customer atau produk..." 
+          placeholder="Cari order #, customer, atau produk..." 
         />
         
         <FilterDropdown 
-          label="Status Pembayaran"
+          label="Status Pesanan"
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -134,15 +117,17 @@ export default function PurchaseHistory() {
           }}
           options={[
             { value: "All", label: "Semua Status" },
-            { value: "Lunas", label: "Lunas" },
-            { value: "Cicilan", label: "Cicilan" },
             { value: "Pending", label: "Pending" },
+            { value: "Processing", label: "Processing" },
+            { value: "Shipping", label: "Shipping" },
+            { value: "Completed", label: "Completed" },
+            { value: "Cancelled", label: "Cancelled" },
           ]}
         />
       </div>
 
       {/* Table */}
-      <div className="border border-[#E8E2DD] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E8E2DD] rounded-xl overflow-hidden shadow-xs">
         <DataTable 
           columns={columns} 
           data={paginatedData} 

@@ -71,6 +71,13 @@ const BellIcon = () => (
   </svg>
 );
 
+const ProjectIcon = () => (
+  <svg className="w-[16px] h-[16px] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+    <path d="M3 3h18v18H3z"/>
+    <path d="M21 9H3M21 15H3M12 3v18"/>
+  </svg>
+);
+
 // ── Sub-components ────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
@@ -160,25 +167,21 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Overview */}
+        {/* Core */}
         <div className="mb-4">
-          <SectionLabel>Overview</SectionLabel>
+          <SectionLabel>Core</SectionLabel>
           <NavItem to="/" end icon={<DashIcon />} label="Dashboard" />
-          <NavItem to="/customers" icon={<CustomerIcon />} label="Customers" />
-        </div>
-
-        {/* Transactions */}
-        <div className="mb-4">
-          <SectionLabel>Transactions</SectionLabel>
           <NavItem to="/purchase-history" icon={<HistoryIcon />} label="Purchase History" />
-          <NavItem to="/memberships" icon={<MemberIcon />} label="Membership" />
+          <NavItem to="/custom-projects" icon={<ProjectIcon />} label="Custom Projects" />
         </div>
 
-        {/* Support */}
+        {/* CRM */}
         <div className="mb-4">
-          <SectionLabel>Support</SectionLabel>
-          <NavItem to="/customer-service" icon={<ServiceIcon />} label="Customer Service" />
+          <SectionLabel>CRM</SectionLabel>
+          <NavItem to="/customers" icon={<CustomerIcon />} label="Customers" />
+          <NavItem to="/memberships" icon={<MemberIcon />} label="Membership" />
           <NavItem to="/product-consultation" icon={<ConsultIcon />} label="Consultation" />
+          <NavItem to="/customer-service" icon={<ServiceIcon />} label="Customer Service" />
         </div>
 
         {/* Marketing */}

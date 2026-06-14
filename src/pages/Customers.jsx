@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye, FiTrash2, FiUserPlus, FiEdit } from "react-icons/fi";
+import { CRMContext } from "../context/CRMContext";
 
 import DataTable from "../components/ui/DataTable";
 import SearchInput from "../components/ui/SearchInput";
@@ -12,48 +13,27 @@ import Modal from "../components/ui/Modal";
 const ITEMS_PER_PAGE = 6;
 
 export default function Customers() {
+  const { customers, addCustomer, updateCustomer, deleteCustomer } = useContext(CRMContext);
   const navigate = useNavigate();
+  
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Modal states for editing
+  // Modal states for editing/adding
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  // Generate 30 dummy Indonesian customers
-  const initialData = useMemo(() => {
-    const names = [
-      "Budi Santoso", "Siti Rahmawati", "Ahmad Reza", "Dewi Lestari", "Andi Wijaya",
-      "Clarissa Wulandari", "Hendra Gunawan", "Fitriani Siregar", "Rian Hidayat", "Indah Permatasari",
-      "Eko Prasetyo", "Maria Ulfah", "Yusuf Habibie", "Megawati Putri", "Anwar Ibrahim",
-      "Kartika Sari", "Dian Sastrowardoyo", "Raffi Ahmad", "Nagita Slavina", "Atta Halilintar",
-      "Gisella Anastasia", "Gading Marten", "Jessica Iskandar", "Nia Ramadhani", "Ardi Bakrie",
-      "Luna Maya", "Ariel Noah", "Tulus Subagyo", "Isyana Sarasvati", "Raisa Andriana"
-    ];
-    
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: i + 1,
-      name: names[i % names.length],
-      email: `${names[i % names.length].toLowerCase().replace(/\s+/g, "")}@gmail.com`,
-      phone: `0812${10000000 + i * 2351}`,
-      loyalty: ["Bronze", "Silver", "Gold", "Platinum"][i % 4],
-      totalSpent: (i + 1) * 3500000,
-      joinDate: `2025-${String((i % 12) + 1).padStart(2, "0")}-15`
-    }));
-  }, []);
-
-  const [data, setData] = useState(initialData);
-
   // Filter & Search logic
   const filteredData = useMemo(() => {
-    return data.filter((c) => {
+    return customers.filter((c) => {
       const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
-                          c.email.toLowerCase().includes(search.toLowerCase());
+                          c.email.toLowerCase().includes(search.toLowerCase()) ||
+                          c.city.toLowerCase().includes(search.toLowerCase());
       const matchTier = tierFilter === "All" || c.loyalty === tierFilter;
       return matchSearch && matchTier;
     });
-  }, [data, search, tierFilter]);
+  }, [customers, search, tierFilter]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
@@ -70,28 +50,45 @@ export default function Customers() {
 
   const handleSaveEdit = (e) => {
     e.preventDefault();
-    setData(prev => prev.map(c => c.id === selectedCustomer.id ? selectedCustomer : c));
+    if (customers.some(c => c.id === selectedCustomer.id)) {
+      updateCustomer(selectedCustomer);
+    } else {
+      addCustomer(selectedCustomer);
+    }
     setEditModalOpen(false);
   };
 
   const handleDeleteClick = (id, e) => {
     e.stopPropagation();
     if (window.confirm("Apakah Anda yakin ingin menghapus data pelanggan ini?")) {
-      setData(prev => prev.filter(c => c.id !== id));
+      deleteCustomer(id);
     }
   };
 
   // Columns definition for DataTable component
   const columns = [
     { key: "id", label: "ID", render: (r) => `#${String(r.id).padStart(3, "0")}` },
-    { key: "name", label: "Customer Name", render: (r) => <span className="font-semibold text-xs text-[#2B2420]">{r.name}</span> },
+    { 
+      key: "name", 
+      label: "Customer Name", 
+      render: (r) => (
+        <span className="font-bold text-xs text-[#2B2420] hover:underline cursor-pointer" onClick={() => navigate(`/customers/${r.id}`)}>
+          {r.name}
+        </span>
+      ) 
+    },
     { key: "email", label: "Email" },
     { key: "phone", label: "Phone" },
+    { key: "city", label: "City", render: (r) => <span>{r.city || "Jakarta"}</span> },
     { key: "loyalty", label: "Loyalty Tier", render: (r) => <MembershipBadge tier={r.loyalty} /> },
     { 
       key: "totalSpent", 
       label: "Total Pembelian", 
-      render: (r) => <span className="font-bold text-xs text-[#79553D]">{r.totalSpent.toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 })}</span> 
+      render: (r) => (
+        <span className="font-extrabold text-xs text-[#79553D]">
+          {(r.totalSpent || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 })}
+        </span>
+      ) 
     },
     {
       key: "actions",
@@ -101,21 +98,21 @@ export default function Customers() {
           <button 
             title="View Details"
             onClick={() => navigate(`/customers/${r.id}`)}
-            className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all"
+            className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all cursor-pointer border-none bg-transparent"
           >
             <FiEye className="text-sm" />
           </button>
           <button 
             title="Edit Customer"
             onClick={(e) => handleEditClick(r, e)}
-            className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all"
+            className="p-1.5 text-[#8A817A] hover:text-[#79553D] hover:bg-[#F5ECE5] rounded-md transition-all cursor-pointer border-none bg-transparent"
           >
             <FiEdit className="text-sm" />
           </button>
           <button 
             title="Delete Customer"
-            onClick={(e) => handleDeleteClick(r, e)}
-            className="p-1.5 text-[#8A817A] hover:text-[#B85C5C] hover:bg-[#F2E6E6] rounded-md transition-all"
+            onClick={(e) => handleDeleteClick(r.id, e)}
+            className="p-1.5 text-[#8A817A] hover:text-[#B85C5C] hover:bg-[#F2E6E6] rounded-md transition-all cursor-pointer border-none bg-transparent"
           >
             <FiTrash2 className="text-sm" />
           </button>
@@ -125,7 +122,7 @@ export default function Customers() {
   ];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto font-sans bg-white border border-[#E8E2DD]/80 rounded-xl">
+    <div className="max-w-7xl mx-auto font-sans text-left">
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -136,18 +133,27 @@ export default function Customers() {
           >
             Customers
           </h1>
-          <p className="text-sm text-[#8A817A] mt-2 font-medium">
+          <p className="text-sm text-[#8A817A] mt-2 font-semibold">
             Kelola pelanggan loyal TimberCraft, pantau membership tier, dan riwayat transaksi mereka.
           </p>
         </div>
 
         <button
           onClick={() => {
-            const nextId = data.length > 0 ? Math.max(...data.map(c => c.id)) + 1 : 1;
-            setSelectedCustomer({ id: nextId, name: "", email: "", phone: "", loyalty: "Bronze", totalSpent: 0, joinDate: new Date().toISOString().split('T')[0] });
+            setSelectedCustomer({ 
+              id: Date.now(), 
+              name: "", 
+              email: "", 
+              phone: "", 
+              city: "Jakarta",
+              address: "",
+              loyalty: "Bronze", 
+              totalSpent: 0, 
+              joinDate: new Date().toISOString().split('T')[0] 
+            });
             setEditModalOpen(true);
           }}
-          className="flex items-center justify-center gap-2 bg-[#79553D] hover:bg-[#634430] text-white px-4.5 py-2.5 rounded-lg text-xs font-semibold shadow-xs transition-all duration-150"
+          className="flex items-center justify-center gap-2 bg-[#79553D] hover:bg-[#634430] text-white px-4.5 py-2.5 rounded-lg text-xs font-bold shadow-xs transition-all duration-150 cursor-pointer border-none"
         >
           <FiUserPlus className="text-sm" /> Add Customer
         </button>
@@ -161,7 +167,7 @@ export default function Customers() {
             setSearch(e.target.value);
             setCurrentPage(1);
           }} 
-          placeholder="Search by name or email..." 
+          placeholder="Search by name, email or city..." 
         />
         
         <FilterDropdown 
@@ -177,12 +183,13 @@ export default function Customers() {
             { value: "Silver", label: "Silver" },
             { value: "Gold", label: "Gold" },
             { value: "Platinum", label: "Platinum" },
+            { value: "VIP", label: "VIP" },
           ]}
         />
       </div>
 
       {/* Data Table Wrapper */}
-      <div className="border border-[#E8E2DD] rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E8E2DD] rounded-xl overflow-hidden shadow-xs">
         <DataTable 
           columns={columns} 
           data={paginatedData} 
@@ -204,66 +211,98 @@ export default function Customers() {
         <Modal
           isOpen={editModalOpen}
           onClose={() => setEditModalOpen(false)}
-          title={data.some(c => c.id === selectedCustomer.id) ? "Edit Customer Data" : "Add New Customer"}
+          title={customers.some(c => c.id === selectedCustomer.id) ? "Edit Customer Data" : "Add New Customer"}
         >
-          <form onSubmit={handleSaveEdit} className="space-y-4">
+          <form onSubmit={handleSaveEdit} className="space-y-4 text-left">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Nama Lengkap</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Nama Lengkap</label>
               <input
                 type="text"
                 required
                 value={selectedCustomer.name}
                 onChange={(e) => setSelectedCustomer(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#E8E2DD] rounded-lg text-sm text-[#2B2420] outline-none focus:ring-1 focus:ring-[#79553D] focus:border-[#79553D]"
+                className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D]"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Email</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Email</label>
               <input
                 type="email"
                 required
                 value={selectedCustomer.email}
                 onChange={(e) => setSelectedCustomer(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#E8E2DD] rounded-lg text-sm text-[#2B2420] outline-none focus:ring-1 focus:ring-[#79553D] focus:border-[#79553D]"
+                className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D]"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Telepon</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Telepon</label>
                 <input
                   type="text"
                   required
                   value={selectedCustomer.phone}
                   onChange={(e) => setSelectedCustomer(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#E8E2DD] rounded-lg text-sm text-[#2B2420] outline-none focus:ring-1 focus:ring-[#79553D] focus:border-[#79553D]"
+                  className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Membership</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Kota</label>
+                <input
+                  type="text"
+                  required
+                  value={selectedCustomer.city || ""}
+                  onChange={(e) => setSelectedCustomer(prev => ({ ...prev, city: e.target.value }))}
+                  className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D]"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Membership</label>
                 <select
                   value={selectedCustomer.loyalty}
                   onChange={(e) => setSelectedCustomer(prev => ({ ...prev, loyalty: e.target.value }))}
-                  className="w-full px-3 py-2 border border-[#E8E2DD] bg-white rounded-lg text-sm text-[#2B2420] outline-none focus:ring-1 focus:ring-[#79553D] focus:border-[#79553D]"
+                  className="w-full px-3.5 py-2 border border-[#E8E2DD] bg-white rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D]"
                 >
                   <option value="Bronze">Bronze</option>
                   <option value="Silver">Silver</option>
                   <option value="Gold">Gold</option>
                   <option value="Platinum">Platinum</option>
+                  <option value="VIP">VIP</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Total Pembelian (Rp)</label>
+                <input
+                  type="number"
+                  required
+                  disabled={customers.some(c => c.id === selectedCustomer.id)}
+                  value={selectedCustomer.totalSpent}
+                  onChange={(e) => setSelectedCustomer(prev => ({ ...prev, totalSpent: Number(e.target.value) }))}
+                  className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D] disabled:bg-[#FAFAF8] disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8A817A] mb-1.5">Alamat Lengkap</label>
+              <textarea
+                value={selectedCustomer.address || ""}
+                onChange={(e) => setSelectedCustomer(prev => ({ ...prev, address: e.target.value }))}
+                className="w-full px-3.5 py-2 border border-[#E8E2DD] rounded-lg text-xs text-[#2B2420] outline-none focus:border-[#79553D] h-20 resize-none"
+              />
             </div>
             
-            <div className="flex justify-end gap-3 pt-4 border-t border-[#E8E2DD]/80">
+            <div className="flex justify-end gap-3.5 pt-4 border-t border-[#E8E2DD]/80">
               <button
                 type="button"
                 onClick={() => setEditModalOpen(false)}
-                className="px-4 py-2 border border-[#E8E2DD] rounded-lg text-xs font-semibold text-[#8A817A] hover:bg-[#FAFAFA]"
+                className="px-4 py-2 border border-[#E8E2DD] rounded-lg text-xs font-semibold text-[#8A817A] hover:bg-[#FAFAF8] bg-transparent cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-4.5 py-2 bg-[#79553D] hover:bg-[#634430] text-white rounded-lg text-xs font-semibold shadow-xs"
+                className="px-4 py-2 bg-[#79553D] hover:bg-[#634430] text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer border-none"
               >
                 Simpan Perubahan
               </button>

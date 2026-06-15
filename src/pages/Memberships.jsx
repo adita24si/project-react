@@ -5,9 +5,10 @@ import { CRMContext } from "../context/CRMContext";
 
 import DataTable from "../components/ui/DataTable";
 import FilterDropdown from "../components/ui/FilterDropdown";
+import SearchInput from "../components/ui/SearchInput";
 import Pagination from "../components/ui/Pagination";
 import MembershipBadge from "../components/ui/MembershipBadge";
-import StatCard from "../components/ui/StatCard";
+import MembershipCard from "../components/ui/MembershipCard";
 import Modal from "../components/ui/Modal";
 
 const ITEMS_PER_PAGE = 7;
@@ -16,6 +17,7 @@ export default function Memberships() {
   const { customers, updateCustomer } = useContext(CRMContext);
   const navigate = useNavigate();
   const [tierFilter, setTierFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   
   // Upgrade state
@@ -35,9 +37,21 @@ export default function Memberships() {
   }, [customers]);
 
   const filteredMembers = useMemo(() => {
-    if (tierFilter === "All") return customers;
-    return customers.filter(c => c.loyalty === tierFilter);
-  }, [customers, tierFilter]);
+    let result = customers;
+    if (tierFilter !== "All") {
+      result = result.filter(c => c.loyalty === tierFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.toLowerCase().includes(q)) ||
+        String(c.id).includes(q)
+      );
+    }
+    return result;
+  }, [customers, tierFilter, searchQuery]);
 
   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
   const paginatedMembers = useMemo(() => {
@@ -113,22 +127,70 @@ export default function Memberships() {
             Membership
           </h1>
           <p className="text-sm text-[#8A817A] mt-2 font-semibold">
-            Kelola loyalty program mebel FurniCraft, monitor status benefit tier, poin reward, dan pertumbuhan member.
+            Kelola loyalty program mebel TimberCraft, monitor status benefit tier, poin reward, dan pertumbuhan member.
           </p>
         </div>
       </div>
 
       {/* Tiers Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
-        <StatCard icon={<FiAward />} value={String(stats.bronze)} label="Bronze" color="#8A817A" />
-        <StatCard icon={<FiAward />} value={String(stats.silver)} label="Silver" color="#6E6A67" />
-        <StatCard icon={<FiAward />} value={String(stats.gold)} label="Gold" color="#967132" />
-        <StatCard icon={<FiAward />} value={String(stats.platinum)} label="Platinum" color="#3D5266" />
-        <StatCard icon={<FiAward />} value={String(stats.vip)} label="VIP / Premium" color="#79553D" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+        <MembershipCard 
+          tier="Bronze" 
+          count={stats.bronze} 
+          active={tierFilter === "Bronze"} 
+          onClick={() => {
+            setTierFilter(tierFilter === "Bronze" ? "All" : "Bronze");
+            setCurrentPage(1);
+          }}
+        />
+        <MembershipCard 
+          tier="Silver" 
+          count={stats.silver} 
+          active={tierFilter === "Silver"} 
+          onClick={() => {
+            setTierFilter(tierFilter === "Silver" ? "All" : "Silver");
+            setCurrentPage(1);
+          }}
+        />
+        <MembershipCard 
+          tier="Gold" 
+          count={stats.gold} 
+          active={tierFilter === "Gold"} 
+          onClick={() => {
+            setTierFilter(tierFilter === "Gold" ? "All" : "Gold");
+            setCurrentPage(1);
+          }}
+        />
+        <MembershipCard 
+          tier="Platinum" 
+          count={stats.platinum} 
+          active={tierFilter === "Platinum"} 
+          onClick={() => {
+            setTierFilter(tierFilter === "Platinum" ? "All" : "Platinum");
+            setCurrentPage(1);
+          }}
+        />
+        <MembershipCard 
+          tier="VIP" 
+          count={stats.vip} 
+          active={tierFilter === "VIP"} 
+          onClick={() => {
+            setTierFilter(tierFilter === "VIP" ? "All" : "VIP");
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
-      {/* Filter Options */}
-      <div className="flex justify-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+      {/* Filter and Search Options */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="Cari member berdasarkan nama, email..."
+        />
         <FilterDropdown 
           label="Filter Tier"
           value={tierFilter}

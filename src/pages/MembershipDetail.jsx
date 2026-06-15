@@ -6,6 +6,7 @@ import { CRMContext } from "../context/CRMContext";
 import DetailCard from "../components/ui/DetailCard";
 import InfoRow from "../components/ui/InfoRow";
 import MembershipBadge from "../components/ui/MembershipBadge";
+import MembershipCard from "../components/ui/MembershipCard";
 import Avatar from "../components/ui/Avatar";
 
 export default function MembershipDetail() {
@@ -152,6 +153,14 @@ export default function MembershipDetail() {
         
         {/* Left Column: Member Card & Stats */}
         <div className="lg:col-span-5 space-y-6">
+          <div className="flex justify-center">
+            <MembershipCard 
+              tier={customer.loyalty} 
+              count={customers.filter(c => c.loyalty === customer.loyalty).length}
+              active={true}
+              onClick={() => {}}
+            />
+          </div>
           <DetailCard title="Profil & Status Member">
             <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[#E8E2DD]/40">
               <Avatar name={customer.name} size="md" />

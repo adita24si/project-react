@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { supabase } from "../../utils/supabaseClient";
 
 const C = {
   primary: "#79553D",
@@ -11,15 +12,37 @@ const C = {
   successBg: "#F0FDF4",
   successBorder: "#BBF7D0",
   successText: "#16A34A",
+  errorBg: "#FEF2F2",
+  errorBorder: "#FECACA",
+  errorText: "#DC2626",
 };
 
 export default function Forgot() {
   const [submitted, setSubmitted] = useState(false);
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email) setSubmitted(true);
+    if (!email) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/login",
+      });
+
+      if (resetError) throw resetError;
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || "Failed to send reset link");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -122,6 +145,19 @@ export default function Forgot() {
         </p>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div
+          className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-sm mb-6"
+          style={{ background: C.errorBg, border: `1px solid ${C.errorBorder}`, color: C.errorText }}
+        >
+          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">{error}</span>
+        </div>
+      )}
+
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Email */}
@@ -157,25 +193,27 @@ export default function Forgot() {
         <div className="pt-2">
           <button
             type="submit"
-            id="forgot-submit"
-            className="w-full flex justify-center items-center py-3.5 px-4 rounded-lg text-sm font-bold text-white transition-all duration-200 cursor-pointer"
+            disabled={loading}
+            className="w-full flex justify-center items-center py-3.5 px-4 rounded-lg text-sm font-bold text-white transition-all duration-200 cursor-pointer disabled:opacity-50"
             style={{
               background: C.primary,
               border: "none",
               boxShadow: "0 2px 8px rgba(121,85,61,0.25)",
             }}
             onMouseEnter={(e) => {
+              if (loading) return;
               e.target.style.background = "#614330";
               e.target.style.transform = "translateY(-1px)";
               e.target.style.boxShadow = "0 4px 12px rgba(121,85,61,0.3)";
             }}
             onMouseLeave={(e) => {
+              if (loading) return;
               e.target.style.background = C.primary;
               e.target.style.transform = "translateY(0)";
               e.target.style.boxShadow = "0 2px 8px rgba(121,85,61,0.25)";
             }}
           >
-            Send Reset Link
+            {loading ? "Sending link..." : "Send Reset Link"}
           </button>
         </div>
       </form>

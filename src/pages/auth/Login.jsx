@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../../utils/supabaseClient";
 
 const C = {
   primary: "#79553D",
@@ -18,8 +18,8 @@ export default function Login() {
   const navigate = useNavigate();
 
   const [dataForm, setDataForm] = useState({
-    email: "emilys",
-    password: "emilyspass",
+    email: "",
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -37,22 +37,18 @@ export default function Login() {
     setError("");
 
     try {
-      const response = await axios.post(
-        "https://dummyjson.com/user/login",
-        {
-          username: dataForm.email,
-          password: dataForm.password,
-        },
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: dataForm.email,
+        password: dataForm.password,
+      });
 
-      localStorage.setItem("user", JSON.stringify(response.data));
+      if (error) throw error;
+
+      localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/dashboard");
     } catch (err) {
       setError(
-        err.response?.data?.message || "Username atau password salah"
+        err.message || "Email atau password salah"
       );
     } finally {
       setLoading(false);
@@ -89,13 +85,13 @@ export default function Login() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Username */}
+        {/* Email Address */}
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.dark }}>
-            Username
+            Email Address
           </label>
           <input
-            type="text"
+            type="email"
             name="email"
             id="login-username"
             value={dataForm.email}

@@ -5,6 +5,13 @@ export default function MembershipBadge({ tier }) {
   const getStyles = (t) => {
     const term = String(t).toLowerCase();
     switch (term) {
+      case "vip":
+        return {
+          bg: "bg-[#FDF9F2]",
+          text: "text-[#D4AF37]",
+          border: "border-[#EADBB3]",
+          label: "VIP"
+        };
       case "platinum":
         return {
           bg: "bg-[#ECF2F7]",

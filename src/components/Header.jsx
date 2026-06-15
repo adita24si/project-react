@@ -1,4 +1,4 @@
-import { useState, useContext, useRef, useEffect } from "react";
+import { useState, useContext, useRef, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { CRMContext } from "../context/CRMContext";
 import { FiSearch, FiBell, FiPlus, FiUser, FiSettings, FiLogOut, FiCheck, FiX, FiInfo } from "react-icons/fi";
@@ -29,6 +29,26 @@ export default function Header() {
   } = useContext(CRMContext);
 
   const navigate = useNavigate();
+
+  const user = useMemo(() => {
+    try {
+      const localUser = localStorage.getItem("user");
+      return localUser ? JSON.parse(localUser) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  const fullName = user?.user_metadata?.full_name || user?.email || "Admin User";
+  const userRole = user?.user_metadata?.role || "Store Manager";
+  const userInitials = useMemo(() => {
+    return fullName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  }, [fullName]);
 
   // Dropdown states
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -386,19 +406,19 @@ export default function Header() {
             className="flex items-center gap-2.5 p-1 rounded-lg hover:bg-[#FAFAF8] transition-colors cursor-pointer border-none bg-transparent text-left"
           >
             <div className="w-8 h-8 rounded-full bg-[#79553D] text-white flex items-center justify-center font-bold text-xs">
-              AR
+              {userInitials}
             </div>
             <div className="hidden lg:flex flex-col text-left">
-              <span className="text-xs font-bold text-[#2B2420] leading-none">Ahmad Reza</span>
-              <span className="text-[9px] text-[#8A817A] mt-0.5">Store Manager</span>
+              <span className="text-xs font-bold text-[#2B2420] leading-none">{fullName}</span>
+              <span className="text-[9px] text-[#8A817A] mt-0.5">{userRole}</span>
             </div>
           </button>
 
           {showProfile && (
             <div className="absolute right-0 top-10 mt-1 w-44 bg-white border border-[#E8E2DD] rounded-xl shadow-lg py-1.5 text-left">
               <div className="px-4 py-2 border-b border-[#E8E2DD]/50 lg:hidden">
-                <p className="text-xs font-bold text-[#2B2420]">Ahmad Reza</p>
-                <p className="text-[9px] text-[#8A817A]">Store Manager</p>
+                <p className="text-xs font-bold text-[#2B2420]">{fullName}</p>
+                <p className="text-[9px] text-[#8A817A]">{userRole}</p>
               </div>
               <button
                 onClick={() => { setShowProfile(false); navigate("/customers/1"); }}

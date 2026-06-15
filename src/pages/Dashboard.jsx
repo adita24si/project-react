@@ -41,6 +41,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [sidebarTab, setSidebarTab] = useState("activity");
 
+  const user = useMemo(() => {
+    try {
+      const localUser = localStorage.getItem("user");
+      return localUser ? JSON.parse(localUser) : null;
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  const adminName = user?.user_metadata?.full_name || user?.email || "Admin";
+
   // Tasks state (Follow-Up Tasks)
   const [tasks, setTasks] = useState([
     { id: 1, text: "Follow up proposal meja jati Budi Santoso", done: false },
@@ -152,7 +163,7 @@ export default function Dashboard() {
       {/* Good Morning Greeting Banner */}
       <div className="bg-[#FAF6F3] border border-[#E8E2DD] rounded-2xl p-6.5 mb-8 text-left">
         <h2 className="text-2xl font-bold text-[#2B2420] tracking-tight" style={{ fontFamily: "ui-serif, Georgia, serif" }}>
-          Welcome back to FurniCraft CRM, Ahmad! 👋
+          Welcome back to FurniCraft CRM, {adminName}! 👋
         </h2>
         <p className="text-xs text-[#8A817A] mt-1 font-semibold">
           Berikut adalah ringkasan performa penjualan furniture, membership, dan aktivitas pelanggan hari ini.

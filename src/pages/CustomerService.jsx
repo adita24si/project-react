@@ -5,9 +5,10 @@ import { CRMContext } from "../context/CRMContext";
 
 import DataTable from "../components/ui/DataTable";
 import FilterDropdown from "../components/ui/FilterDropdown";
+import SearchInput from "../components/ui/SearchInput";
 import Pagination from "../components/ui/Pagination";
 import StatusBadge from "../components/ui/StatusBadge";
-import StatCard from "../components/ui/StatCard";
+import PremiumStatCard from "../components/ui/PremiumStatCard";
 import Modal from "../components/ui/Modal";
 
 const ITEMS_PER_PAGE = 7;
@@ -17,6 +18,7 @@ export default function CustomerService() {
   const navigate = useNavigate();
   
   const [statusFilter, setStatusFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Ticket creation modal
@@ -40,9 +42,21 @@ export default function CustomerService() {
   }, [tickets]);
 
   const filteredTickets = useMemo(() => {
-    if (statusFilter === "All") return tickets;
-    return tickets.filter(t => t.status === statusFilter);
-  }, [tickets, statusFilter]);
+    let result = tickets;
+    if (statusFilter !== "All") {
+      result = result.filter(t => t.status === statusFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(t => 
+        (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+        (t.category && t.category.toLowerCase().includes(q)) ||
+        (t.subject && t.subject.toLowerCase().includes(q)) ||
+        String(t.id).includes(q)
+      );
+    }
+    return result;
+  }, [tickets, statusFilter, searchQuery]);
 
   const totalPages = Math.ceil(filteredTickets.length / ITEMS_PER_PAGE);
   const paginatedTickets = useMemo(() => {
@@ -134,7 +148,7 @@ export default function CustomerService() {
             Customer Service
           </h1>
           <p className="text-sm text-[#8A817A] mt-2 font-semibold">
-            Kelola pengaduan tiket, retur, garansi, dan feedback customer FurniCraft untuk menjamin kepuasan layanan pelanggan.
+            Kelola pengaduan tiket, retur, garansi, dan feedback customer TimberCraft untuk menjamin kepuasan layanan pelanggan.
           </p>
         </div>
 
@@ -147,15 +161,67 @@ export default function CustomerService() {
       </div>
 
       {/* CS KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={<FiHeadphones />} value={String(stats.total)} label="Total Laporan" color="#79553D" />
-        <StatCard icon={<FiAlertCircle />} value={String(stats.open)} label="Tiket Open" color="#B85C5C" />
-        <StatCard icon={<FiClock />} value={String(stats.inProgress)} label="In Progress" color="#A86E2E" />
-        <StatCard icon={<FiCheckCircle />} value={String(stats.resolved + stats.closed)} label="Resolved / Closed" color="#4A6B46" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <PremiumStatCard 
+          icon={<FiHeadphones />} 
+          value={String(stats.total)} 
+          label="Total Laporan" 
+          description="Akumulasi keluhan masuk"
+          theme="primary"
+          active={statusFilter === "All"}
+          onClick={() => {
+            setStatusFilter("All");
+            setCurrentPage(1);
+          }}
+        />
+        <PremiumStatCard 
+          icon={<FiAlertCircle />} 
+          value={String(stats.open)} 
+          label="Tiket Open" 
+          description="Menunggu penanganan awal"
+          theme="danger"
+          active={statusFilter === "Open"}
+          onClick={() => {
+            setStatusFilter(statusFilter === "Open" ? "All" : "Open");
+            setCurrentPage(1);
+          }}
+        />
+        <PremiumStatCard 
+          icon={<FiClock />} 
+          value={String(stats.inProgress)} 
+          label="In Progress" 
+          description="Sedang dalam proses tindak lanjut"
+          theme="warning"
+          active={statusFilter === "In Progress"}
+          onClick={() => {
+            setStatusFilter(statusFilter === "In Progress" ? "All" : "In Progress");
+            setCurrentPage(1);
+          }}
+        />
+        <PremiumStatCard 
+          icon={<FiCheckCircle />} 
+          value={String(stats.resolved + stats.closed)} 
+          label="Resolved / Closed" 
+          description="Tiket yang telah terselesaikan"
+          theme="success"
+          active={statusFilter === "Resolved"}
+          onClick={() => {
+            setStatusFilter(statusFilter === "Resolved" ? "All" : "Resolved");
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
-      {/* Filters options */}
-      <div className="flex justify-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+      {/* Filters and Search Options */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="Cari tiket berdasarkan nama, keluhan..."
+        />
         <FilterDropdown 
           label="Filter Status"
           value={statusFilter}

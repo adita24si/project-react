@@ -5,9 +5,10 @@ import { CRMContext } from "../context/CRMContext";
 
 import DataTable from "../components/ui/DataTable";
 import FilterDropdown from "../components/ui/FilterDropdown";
+import SearchInput from "../components/ui/SearchInput";
 import Pagination from "../components/ui/Pagination";
 import StatusBadge from "../components/ui/StatusBadge";
-import StatCard from "../components/ui/StatCard";
+import PremiumStatCard from "../components/ui/PremiumStatCard";
 
 const ITEMS_PER_PAGE = 7;
 
@@ -15,6 +16,8 @@ export default function ProductConsultation() {
   const { consultations } = useContext(CRMContext);
   const navigate = useNavigate();
   const [designFilter, setDesignFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Stats calculation
@@ -27,9 +30,32 @@ export default function ProductConsultation() {
   }, [consultations]);
 
   const filteredConsultations = useMemo(() => {
-    if (designFilter === "All") return consultations;
-    return consultations.filter(c => c.designPreference === designFilter);
-  }, [consultations, designFilter]);
+    let result = consultations;
+    
+    // Design Preference filter
+    if (designFilter !== "All") {
+      result = result.filter(c => c.designPreference === designFilter);
+    }
+    
+    // Date filter (Today)
+    if (dateFilter === "Today") {
+      const todayStr = new Date().toISOString().split("T")[0];
+      result = result.filter(c => c.date === todayStr);
+    }
+    
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        (c.customerName && c.customerName.toLowerCase().includes(q)) ||
+        (c.roomType && c.roomType.toLowerCase().includes(q)) ||
+        (c.designPreference && c.designPreference.toLowerCase().includes(q)) ||
+        String(c.id).includes(q)
+      );
+    }
+    
+    return result;
+  }, [consultations, designFilter, dateFilter, searchQuery]);
 
   const totalPages = Math.ceil(filteredConsultations.length / ITEMS_PER_PAGE);
   const paginatedConsultations = useMemo(() => {
@@ -103,25 +129,60 @@ export default function ProductConsultation() {
             Interior Consultation
           </h1>
           <p className="text-sm text-[#8A817A] mt-2 font-semibold">
-            Kelola janji temu dan data pengajuan desain tata ruang interior mebel custom FurniCraft untuk rumah pelanggan.
+            Kelola janji temu dan data pengajuan desain tata ruang interior mebel custom TimberCraft untuk rumah pelanggan.
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-        <StatCard icon={<FiBookOpen />} value={String(stats.total)} label="Total Pengajuan" color="#79553D" />
-        <StatCard icon={<FiCalendar />} value={String(stats.today)} label="Pengajuan Baru Hari Ini" color="#3D5266" />
-        <StatCard 
+        <PremiumStatCard 
+          icon={<FiBookOpen />} 
+          value={String(stats.total)} 
+          label="Total Pengajuan" 
+          description="Semua janji konsultasi masuk"
+          theme="primary"
+          active={designFilter === "All" && dateFilter === "All"}
+          onClick={() => {
+            setDesignFilter("All");
+            setDateFilter("All");
+            setCurrentPage(1);
+          }}
+        />
+        <PremiumStatCard 
+          icon={<FiCalendar />} 
+          value={String(stats.today)} 
+          label="Pengajuan Hari Ini" 
+          description="Agenda konsultasi tanggal hari ini"
+          theme="info"
+          active={dateFilter === "Today"}
+          onClick={() => {
+            setDateFilter(dateFilter === "Today" ? "All" : "Today");
+            setDesignFilter("All");
+            setCurrentPage(1);
+          }}
+        />
+        <PremiumStatCard 
           icon={<FiCheckCircle />} 
-          value={`Rp ${(stats.budgetSum / 1000000).toFixed(0)}M`} 
-          label="Total Estimasi Budget Proyek" 
-          color="#4A6B46" 
+          value={`Rp ${(stats.budgetSum / 1000000).toFixed(0)}Jt`} 
+          label="Total Estimasi Budget" 
+          description="Akumulasi budget rencana dekorasi"
+          theme="success"
+          active={false}
+          onClick={() => {}}
         />
       </div>
 
-      {/* Filters dropdowns */}
-      <div className="flex justify-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+      {/* Filters and Search Options */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end gap-4 mb-6 pb-6 border-b border-[#E8E2DD]/60">
+        <SearchInput
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="Cari konsultasi berdasarkan nama, jenis ruangan..."
+        />
         <FilterDropdown 
           label="Preferensi Desain"
           value={designFilter}
@@ -139,6 +200,8 @@ export default function ProductConsultation() {
           ]}
         />
       </div>
+
+
 
       {/* Table grid */}
       <div className="bg-white border border-[#E8E2DD] rounded-xl overflow-hidden shadow-xs">

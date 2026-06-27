@@ -1,0 +1,502 @@
+﻿# PRD IMPLEMENTATION - Timber CRM
+# Document Type: Product Requirements Document - Implementation Report
+# Project Name: Timber CRM
+# Platform: SaaS Web Application (React + Supabase)
+# Tech Stack: React 19, Vite 7, Tailwind CSS 4, Supabase, react-router-dom v7, recharts
+
+=================================================================
+RINGKASAN EKSEKUTIF
+=================================================================
+
+Timber CRM adalah platform SaaS manajemen hubungan pelanggan (CRM) yang
+dirancang khusus untuk industri retail mebel kayu dan showroom furnitur
+di Indonesia. Platform ini mengintegrasikan pipeline penjualan kustom,
+sistem loyalty membership, manajemen stok bahan material kayu, pelacakan
+pengiriman armada, dan otomatisasi kampanye marketing.
+
+=================================================================
+PRD V1 - PONDASI CRM & AUTENTIKASI ADMIN
+=================================================================
+
+TUJUAN: Membangun fondasi sistem CRM dengan login aman berbasis cloud,
+pengelolaan data master pelanggan, dan dasbor analitik visual real-time.
+
+--- V1.1 SISTEM AUTENTIKASI ---
+
+File                          Deskripsi
+----                          ---------
+src/pages/auth/Login.jsx      Form login email+password, validasi, feedback error Supabase
+src/pages/auth/Register.jsx   Field: Nama Lengkap, Email, No Telp, Alamat, Role
+src/pages/auth/Forgot.jsx     Reset password via email
+src/layouts/AuthLayout.jsx    Layout terpisah tanpa sidebar admin
+src/App.jsx (ProtectedRoute)  Redirect ke /login jika sesi belum aktif
+
+DATABASE SUPABASE:
+  Tabel   : users
+  Kolom   : id, full_name, email, phone_number, address, role, created_at
+  Security: Row Level Security (RLS) aktif
+
+ALUR AUTENTIKASI:
+  [Guest] -> /login -> [Supabase Auth] -> Token JWT
+  [Valid Token]   -> Redirect ke /dashboard
+  [Invalid Token] -> Tetap di /login dengan pesan error
+
+--- V1.2 SISTEM ROUTING & NAVIGASI ---
+
+File                          Fungsi
+----                          ------
+src/App.jsx                   Root router + React.lazy semua pages + Suspense
+src/components/Sidebar.jsx    Sidebar 4 grup menu
+src/components/Header.jsx     Header notifikasi, search, profil admin
+src/layouts/MainLayout.jsx    Layout admin (Sidebar + Header + Content)
+
+STRUKTUR RUTE:
+  /                     -> LandingPage (Public)
+  /login, /register     -> Auth Pages
+  /dashboard            -> Dashboard CRM (Protected)
+  /customers            -> Daftar Pelanggan
+  /customers/:id        -> Detail Pelanggan
+  /purchase-history     -> Riwayat Pembelian
+  /purchase-history/:id -> Detail Transaksi
+  /memberships          -> Manajemen Keanggotaan
+  /memberships/:id      -> Detail Membership
+  /customer-service     -> Tiket Layanan CS
+  /customer-service/:id -> Detail Tiket
+  /product-consultation -> Konsultasi Desain
+  /promotions           -> Manajemen Promo
+  /notifications        -> Pusat Notifikasi
+
+--- V1.3 DASHBOARD ANALITIK ---
+
+Widget                   Library        Deskripsi
+------                   -------        ---------
+4 KPI Cards              Custom         Total Customer, Member, Penjualan, Customer Baru
+Line Chart Penjualan     Recharts       Tren penjualan 6 bulan dengan custom tooltip
+Bar Chart Customer Baru  Recharts       Akuisisi customer baru per bulan
+Top Customers Table      Custom         5 pelanggan pembelian tertinggi
+Activity Feed            Custom         5 aktivitas terbaru (pembelian, komplain, upgrade)
+
+--- V1.4 CRM CONTEXT (STATE MANAGEMENT GLOBAL) ---
+
+File: src/context/CRMContext.jsx
+
+State            Deskripsi
+-----            ---------
+customers        Daftar semua pelanggan showroom
+transactions     Riwayat transaksi penjualan mebel
+tickets          Tiket keluhan dan permintaan CS
+consultations    Jadwal dan data sesi konsultasi desain
+promotions       Data kampanye promo aktif
+notifications    Riwayat notifikasi sistem dan aktivitas
+
+Fungsi: addCustomer, updateCustomer, deleteCustomer,
+        addConsultation, addTransaction, addTicket
+
+=================================================================
+PRD V2 - MODUL OPERASIONAL LENGKAP (8 MODUL)
+=================================================================
+
+TUJUAN: Mengembangkan 8 modul operasional utama yang mencakup seluruh
+siklus kerja showroom mebel dengan UI premium dan interaksi data real-time.
+
+--- V2.1 MANAJEMEN PELANGGAN ---
+
+Files: src/pages/Customers.jsx + CustomerDetail.jsx
+
+Fitur List View:
+  - Tabel: ID, Nama, Email, Telp, Membership Tier, Total Pembelian, Aksi
+  - Search real-time by nama pelanggan
+  - Filter dropdown: All / Silver / Gold / Platinum
+  - Pagination 5 item per halaman
+  - Tombol View (navigasi ke detail) + Delete (dengan konfirmasi)
+
+Fitur Detail View (5 Tab):
+  Tab Profil          -> Nama, email, telp, alamat, tanggal bergabung
+  Tab Membership      -> Badge tier, total pembelian, benefit list, join date
+  Tab Pembelian       -> Mini-table 5 transaksi terakhir: tanggal, produk, nilai, status
+  Tab Komplain        -> 3 tiket keluhan terakhir: tanggal, subjek, status badge
+  Tab Catatan Admin   -> Textarea notes dengan tombol simpan
+
+--- V2.2 RIWAYAT PEMBELIAN ---
+
+Files: src/pages/PurchaseHistory.jsx + PurchaseDetail.jsx
+
+Fitur:
+  - Tabel: ID Transaksi, Customer, Produk Mebel, Total IDR, Status, Tanggal
+  - Status Badge color-coded: Lunas (hijau), Cicilan (amber), Pending (merah)
+  - Search by nama customer + filter by status pembayaran
+  - Detail: Avatar customer, produk, metode bayar, timeline status
+  - Timeline: Ordered -> Confirmed -> Shipped -> Delivered
+  - 30 data dummy realistis: Sofa, Meja Makan, Lemari, Kursi, Rak TV, dll
+
+--- V2.3 MEMBERSHIP & LOYALTY ---
+
+Files: src/pages/Memberships.jsx + MembershipDetail.jsx + MembershipCard.jsx
+
+Tier Sistem:
+  Bronze   -> Default (0 poin)     Gradien tembaga
+  Silver   -> >= 1.500 poin        Gradien perak metalik
+  Gold     -> >= 2.500 poin        Gradien emas premium
+  Platinum -> >= 5.000 poin        Gradien platinum gelap
+
+MembershipCard: Virtual card bergaya kartu fisik dengan chip dan nomor kartu.
+  - Efek 3D shadow dan gradien premium sesuai tier
+  - Clickable sebagai filter tier pada halaman list
+  - Detail: Progress bar poin, benefit list, timeline upgrade tier
+
+--- V2.4 CUSTOMER SERVICE TICKETS ---
+
+Files: src/pages/CustomerService.jsx + ServiceDetail.jsx
+
+Fitur:
+  - KPI Cards INTERAKTIF: Klik kartu Open/In Progress/Resolved untuk filter tabel
+  - Tabel: ID, Pelanggan, Subjek Keluhan, Prioritas, Status, Tanggal
+  - Status Lifecycle: Open -> In Progress -> Resolved
+  - Priority Badge: Low / Medium / High dengan color coding
+  - PremiumStatCard: Glassmorphism card dengan border warna per kategori
+
+--- V2.5 KONSULTASI PRODUK ---
+
+Files: src/pages/ProductConsultation.jsx + ConsultationDetail.jsx
+
+Fitur:
+  - KPI Cards: Total, Pending, Selesai Hari Ini
+  - Filter "Hari Ini": Klik kartu untuk filter data hari ini saja
+  - Form jadwal: Ruangan, gaya desain, budget, tanggal
+  - SearchInput real-time by nama pelanggan
+
+--- V2.6 PROMOSI & KAMPANYE ---
+
+Files: src/pages/Promotions.jsx + PromotionDetail.jsx
+
+Fitur:
+  - Tabel: Nama promo, segmen target, diskon%, tanggal berlaku
+  - Tipe: Voucher, Flash Sale, Bundle Deal, Cashback, Referral
+  - Status: Active / Scheduled / Ended
+
+--- V2.7 NOTIFIKASI ---
+
+Files: src/pages/Notifications.jsx + NotificationDetail.jsx
+
+Fitur:
+  - Pusat notifikasi dengan status baca/belum baca
+  - Tipe: Promo, Membership, Komplain, Aktivitas Sistem
+  - Unread Dot: Titik merah untuk notifikasi belum dibaca
+
+--- V2.8 UI COMPONENT LIBRARY (15 KOMPONEN) ---
+
+Direktori: src/components/ui/
+
+Komponen           File                    Deskripsi
+---------          ----                    ---------
+DataTable          DataTable.jsx           Tabel generik: empty state, row click
+StatCard           StatCard.jsx            KPI card: delta %, animasi hover
+PremiumStatCard    PremiumStatCard.jsx     Glassmorphism card clickable filter
+StatusBadge        StatusBadge.jsx         Pill badge warna otomatis per status
+MembershipBadge    MembershipBadge.jsx     Badge tier dengan ikon bintang
+MembershipCard     MembershipCard.jsx      Virtual card 3D bergaya kartu fisik
+SearchInput        SearchInput.jsx         Input pencarian dengan ikon FiSearch
+Pagination         Pagination.jsx          Prev/Next + info "Showing X-Y of Z"
+DetailCard         DetailCard.jsx          Card wrapper + header + slot aksi
+TabsComponent      TabsComponent.jsx       Tab navigasi bottom-border indicator
+EmptyState         EmptyState.jsx          Placeholder kosong + ikon + CTA
+FilterDropdown     FilterDropdown.jsx      Dropdown filter dengan label di atas
+ActivityItem       ActivityItem.jsx        Feed aktivitas + ikon berwarna per tipe
+Avatar             Avatar.jsx              Gambar / fallback inisial sm/md/lg
+Modal              Modal.jsx               Dialog overlay + slide-in + tutup
+NotificationItem   NotificationItem.jsx    Item notif + dot unread + ikon tipe
+InfoRow            InfoRow.jsx             Baris label-nilai horizontal + ikon
+
+=================================================================
+PRD V3 - LANDING PAGE SAAS & SISTEM INTERAKTIF
+=================================================================
+
+TUJUAN: Membangun halaman depan SaaS (/) sebagai instrumen pemasaran
+digital untuk akuisisi pengguna baru, memperkenalkan alur kerja CRM
+secara interaktif, dan menghubungkan formulir lead langsung ke database.
+
+--- V3.1 ARSITEKTUR LANDING PAGE ---
+
+File : src/pages/LandingPage.jsx
+Rute : / (public, tidak dilindungi ProtectedRoute)
+
+15 SEKSI HALAMAN:
+  1   Sticky Navbar              Navigasi + CTA "Mulai Gratis"
+  2   Hero Section               Headline + Social Proof
+  3   Live Dashboard Mockup      Widget Interaktif (Real Data CRMContext)
+  4   Trust Logos Ticker         5 Brand Showroom Mitra
+  5   ROI Calculator             Widget Slider Interaktif
+  6   Problem vs. Solution       Perbandingan Manual vs CRM
+  7   CRM Workflow Stepper       10 Panel Sandbox Interaktif
+  8   WhatsApp Simulator         Phone Mockup Interaktif
+  9   Feature Grid               10 Fitur Platform
+  10  Integration Hub            5 Ekosistem Integrasi
+  11  Testimonials               3 Testimoni Pelanggan
+  12  Book Demo Form             Lead Form -> Database CRM
+  13  FAQ Accordion              10 Pertanyaan Umum
+  14  Final CTA Banner           Konversi Penutup
+  15  Newsletter + Footer        Berlangganan + Info Perusahaan
+
+--- V3.2 HERO SECTION ---
+
+  - H1: "Kelola Bisnis Furniture Lebih Mudah dengan Timber" (font serif)
+  - Dual CTA: "Mulai Uji Coba Gratis" + "Jadwalkan Demo Live"
+  - Avatar stack 3 admin + 5 bintang + "Dipercaya 120+ Showroom"
+
+--- V3.3 LIVE DASHBOARD MOCKUP ---
+
+Tab Analitik (Data Live dari CRMContext):
+  Metrik                  Sumber Data
+  ------                  -----------
+  Total Pelanggan         customers.length
+  Total Transaksi Mebel   transactions.length
+  Estimasi Revenue        transactions.reduce(sum, totalSpent)
+  Agenda Konsultasi       consultations.length
+
+Tab Gudang Sandbox (Konfigurasi Interaktif):
+  Kontrol          Tipe            Efek
+  -------          ----            ----
+  Jenis Kayu       Dropdown        Ubah harga per unit
+  Finishing        Dropdown        Ubah multiplier harga
+  Jumlah Unit      Slider 1-30     Ubah total nilai pesanan
+
+  Formula:
+    Base: Teak = Rp 3.5Jt | Oak = Rp 4.2Jt | Walnut = Rp 5.5Jt
+    Multiplier: Natural x1.0 | Melamine x1.15 | PU Lacquer x1.25
+    Total = Base x Multiplier x Quantity
+    Status: <5 = KRITIS | 5-25 = OPTIMAL | >25 = OVERCAPACITY
+
+--- V3.4 INTERACTIVE ROI CALCULATOR ---
+
+Input Slider:
+  Jumlah Sales Team : 1-30 orang (default 5)
+  Omzet Bulanan     : Rp 20Jt - Rp 1Milyar (default Rp 150Jt)
+
+Formula Kalkulasi:
+  timeSaved         = salesTeam x 18 jam/bulan
+  potentialIncrease = revenue x 0.26 (proyeksi +26% closing rate)
+  adminCostSaved    = timeSaved x Rp 65.000/jam
+  totalImpact       = potentialIncrease + adminCostSaved
+
+Output Ditampilkan:
+  - Jam kerja dihemat per bulan
+  - Proyeksi kenaikan omzet (+Rp XJt)
+  - Total dampak finansial estimasi
+
+--- V3.5 CRM WORKFLOW STEPPER (10 SANDBOX PANEL INTERAKTIF) ---
+
+Fitur Umum:
+  - Progress line beranimasi mengikuti langkah aktif
+  - Auto-Play mode (5 detik per langkah) dengan tombol play/pause
+  - Navigasi manual: tombol Kembali dan Lanjutkan
+  - Step completed = hijau, active = primary ring
+
+10 Panel Sandbox:
+
+  Langkah  Judul                    Jenis Interaksi
+  -------  -----                    ---------------
+  1        Registrasi Prospek       Input nama+kota -> Kirim ke DB -> Terminal log Supabase
+  2        Katalog & Konsultasi     Dropdown ruangan+gaya -> Rekomendasi paket otomatis
+  3        Pembuatan Quotation      Pilih kayu, +/- unit -> Generate invoice draft + harga
+  4        Konfirmasi Pesanan       Klik tanda tangan digital -> Kontrak locked + hash SHA
+  5        Transaksi & Pembayaran   Pilih VA/CC/E-Wallet -> Bayar DP -> Status LUNAS muncul
+  6        Produksi Workshop        4 tahap produksi (Potong/Rakit/Finishing/QC) -> klik maju
+  7        Pengiriman Armada        Animasi truk bergerak di progress bar Workshop->Rumah
+  8        Feedback Keluhan         Pilih bintang 1-5 -> <=2 bintang = CS ticket otomatis terbuat
+  9        Loyalty Membership       Virtual card + klik belanja -> poin naik, tier upgrade
+  10       Targeted Campaign        Klik kirim -> Preview email promo personalisasi muncul
+
+--- V3.6 WHATSAPP NOTIFICATION SIMULATOR ---
+
+4 Jenis Pesan Simulasi:
+  Trigger              Isi Pesan
+  -------              ---------
+  Lead Follow-up       Konfirmasi kunjungan + info spesifikasi mebel diminati
+  DP Terkonfirmasi     Verifikasi DP + status antrean produksi workshop
+  Mebel Dikirim        Nama driver + plat mobil + estimasi waktu tiba
+  Minta Ulasan         Ajakan review + link + 100 loyalty points bonus
+
+Tampilan Phone Mockup:
+  - Frame iPhone hitam dengan notch kamera
+  - Chat bubble gaya WhatsApp (background #ECE5DD)
+  - Header "Timber Showroom" dengan indikator Online
+  - Status bar (jam, LTE, baterai), input chat bar
+
+Personalisasi: Nama user + jenis kayu + finishing dari sandbox
+terhubung ke konten pesan yang ditampilkan.
+
+--- V3.7 LEAD CAPTURE FORMS (TERHUBUNG KE DATABASE) ---
+
+Free Trial Modal:
+  Field        Tipe     Validasi
+  -----        ----     --------
+  Nama         Text     Required
+  Showroom     Text     Required
+  Email        Email    Required + format
+  No HP        Text     Opsional
+
+  Efek submit: addCustomer() -> data muncul di /customers admin real-time
+
+Book Demo Form:
+  Field        Tipe     Validasi
+  -----        ----     --------
+  Nama         Text     Required
+  Email        Email    Required
+  Tanggal      Date     Required
+  Topik        Select   4 pilihan topik
+
+  Efek submit: addConsultation() -> booking di /product-consultation real-time
+
+--- V3.8 FAQ ACCORDION (10 PERTANYAAN) ---
+
+  1  Apa itu Timber CRM?
+  2  Cocok untuk showroom kecil?
+  3  Bagaimana integrasi Supabase bekerja?
+  4  Keamanan data pelanggan?
+  5  Trial gratis 14 hari?
+  6  Koneksi WhatsApp Business API?
+  7  Import data dari Excel/CSV?
+  8  Monitoring stok kayu & material?
+  9  Sistem pembayaran langganan SaaS?
+  10 Tim bantuan setup & pelatihan?
+
+=================================================================
+ARSITEKTUR TEKNIS
+=================================================================
+
+Stack Teknologi:
+  Frontend   : React 19 + Vite 7
+  Routing    : react-router-dom v7
+  Styling    : Tailwind CSS 4 + Custom Design Tokens
+  Icons      : react-icons (fi prefix - Feather Icons)
+  Charts     : recharts (LineChart, BarChart, ResponsiveContainer)
+  Database   : Supabase (PostgreSQL + Auth + RLS)
+  State      : React Context API (CRMContext)
+  Build      : Vite (HMR + Code Splitting + Lazy Loading)
+
+Struktur Direktori:
+  src/
+  |-- App.jsx                     Root router + ProtectedRoute
+  |-- main.jsx                    Entry point React DOM
+  |-- index.css                   Global CSS + Tailwind directives
+  |-- pages/
+  |   |-- LandingPage.jsx         Public SaaS landing page
+  |   |-- Dashboard.jsx           CRM analytics dashboard
+  |   |-- Customers.jsx           Customer list
+  |   |-- CustomerDetail.jsx      Customer detail (5 tabs)
+  |   |-- PurchaseHistory.jsx     Transaction list
+  |   |-- PurchaseDetail.jsx      Transaction detail + timeline
+  |   |-- Memberships.jsx         Membership management
+  |   |-- MembershipDetail.jsx    Member detail + progress
+  |   |-- CustomerService.jsx     CS ticket management
+  |   |-- ServiceDetail.jsx       Ticket detail
+  |   |-- ProductConsultation.jsx Design consultation
+  |   |-- ConsultationDetail.jsx  Consultation detail
+  |   |-- Promotions.jsx          Campaign management
+  |   |-- PromotionDetail.jsx     Campaign detail
+  |   |-- Notifications.jsx       Notification center
+  |   |-- NotificationDetail.jsx  Notification detail
+  |   |-- ErrorPage.jsx           404 / Error handler
+  |   -- auth/
+  |       |-- Login.jsx
+  |       |-- Register.jsx
+  |       -- Forgot.jsx
+  |-- components/
+  |   |-- Sidebar.jsx             Navigation sidebar (4 menu groups)
+  |   |-- Header.jsx              Top header bar
+  |   |-- Loading.jsx             Suspense fallback
+  |   |-- PageHeader.jsx          Page title component
+  |   -- ui/                     15 reusable UI components
+  |-- context/
+  |   -- CRMContext.jsx          Global state management
+  -- layouts/
+      |-- MainLayout.jsx          Admin layout wrapper
+      -- AuthLayout.jsx          Auth pages layout
+
+=================================================================
+DESIGN SYSTEM - TIMBER CRM
+=================================================================
+
+COLOR PALETTE:
+  Token          Hex       Penggunaan
+  -----          ---       ----------
+  primary        #79553D   CTA button, active state, aksen utama
+  primaryBg      #FAF6F3   Background section, card hover
+  primaryHover   #634430   Hover state primary button
+  accent         #4A6B46   Success, badge aktif, konfirmasi
+  accentBg       #E6ECE5   Background badge hijau
+  bg             #FAFAF9   Background halaman utama
+  surface        #FFFFFF   Card, modal, input
+  border         #E8E2DD   Border card, divider, input
+  textDark       #2B2420   Heading, label penting
+  textMuted      #8A817A   Sub-label, deskripsi
+  warning        #A86E2E   Badge Cicilan, peringatan
+  danger         #B85C5C   Error, Pending, tiket kritis
+
+TYPOGRAPHY:
+  Heading   : ui-serif, Georgia, Cambria (H1-H3 halaman utama)
+  Body      : Inter, system-ui (semua teks konten)
+  Mono/Data : font-mono (kode, angka IDR, ID transaksi)
+
+=================================================================
+MATRIKS STATUS IMPLEMENTASI
+=================================================================
+
+Fitur                            Versi   Status
+-----                            -----   ------
+Auth Login/Register/Forgot       V1      SELESAI
+Protected Routes                 V1      SELESAI
+CRM Context State Management     V1      SELESAI
+Dashboard Analytics & Charts     V1      SELESAI
+Customer Management (CRUD)       V2      SELESAI
+Purchase History & Detail        V2      SELESAI
+Membership & Loyalty System      V2      SELESAI
+Customer Service Tickets         V2      SELESAI
+Product Consultation             V2      SELESAI
+Promotions & Campaigns           V2      SELESAI
+Notifications Center             V2      SELESAI
+UI Component Library (15 comp)   V2      SELESAI
+SaaS Landing Page (15 seksi)     V3      SELESAI
+Live Dashboard Mockup Real Data  V3      SELESAI
+Interactive ROI Calculator       V3      SELESAI
+WhatsApp Notification Simulator  V3      SELESAI
+Workflow Stepper (10 Sandbox)    V3      SELESAI
+Lead Form -> CRM DB Integration  V3      SELESAI
+FAQ Accordion (10 pertanyaan)    V3      SELESAI
+Stock Configurator Sandbox       V3      SELESAI
+MembershipCard Premium 3D        V3      SELESAI
+
+=================================================================
+ROADMAP FITUR MASA DEPAN
+=================================================================
+
+PRIORITAS TINGGI:
+  [ ] Kanban Sales Pipeline    - Visual drag-and-drop board prospek antar stage
+  [ ] PDF Generator Quotation  - Export penawaran ke PDF bermerek showroom
+  [ ] Multi-Outlet Support     - Manajemen beberapa cabang showroom
+
+PRIORITAS MENENGAH:
+  [ ] WhatsApp Business API    - Integrasi nyata (Fonnte/Waba)
+  [ ] Midtrans Payment Gateway - Penerimaan pembayaran online langsung
+  [ ] Excel/CSV Import Wizard  - Import data pelanggan dan produk massal
+  [ ] Google Calendar Sync     - Sinkronisasi jadwal konsultasi tim
+
+PRIORITAS RENDAH:
+  [ ] Mobile App (PWA)         - Akses CRM dari perangkat mobile
+  [ ] AI Chat Support Bot      - Chatbot berbasis AI untuk FAQ pelanggan
+  [ ] Inventory Raw Materials  - Stok kayu mentah per kubikasi
+
+=================================================================
+STATUS BUILD TERAKHIR
+=================================================================
+
+  Build Tool    : Vite 7.3.2
+  Build Status  : SUCCESS (0 Error, 0 Warning Fatal)
+  Modules       : 780 modules transformed
+  CSS Output    : ~69.5 kB (gzip ~11.4 kB)
+  LandingPage   : ~79.1 kB (gzip ~17.5 kB)
+  Dashboard     : ~405.9 kB (gzip ~118.5 kB - includes recharts)
+
+=================================================================
+Timber CRM v1.0.0 - Last Updated: Juni 2026
+=================================================================
